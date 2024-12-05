@@ -1,0 +1,191 @@
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <vector>
+
+class GpuSpec {
+public:
+    std::string model;  // Modèle de la carte graphique
+    int memory;         // Taille de la mémoire en MB
+
+    // Méthode pour afficher les détails du GPU
+    void Print() const {
+        std::cout << "GPU Model: " << model << ", Memory: " << memory << " MB" << std::endl;
+    }
+
+    // Méthode pour exporter les informations vers un fichier
+    void Export(std::ofstream& ofs) const {
+        ofs << model << "\n" << memory << "\n";
+    }
+
+    // Méthode pour importer les informations depuis un fichier
+    void Import(std::ifstream& ifs) {
+        ifs >> model >> memory;
+    }
+};
+
+class CpuSpec {
+public:
+    std::string model;  // Modèle du processeur
+    int cores;          // Nombre de cœurs
+    float frequency;    // Fréquence en GHz
+
+    // Méthode pour afficher les détails du CPU
+    void Print() const {
+        std::cout << "CPU Model: " << model << ", Cores: " << cores << ", Frequency: " << frequency << " GHz" << std::endl;
+    }
+
+    // Méthode pour exporter les informations vers un fichier
+    void Export(std::ofstream& ofs) const {
+        ofs << model << "\n" << cores << "\n" << frequency << "\n";
+    }
+
+    // Méthode pour importer les informations depuis un fichier
+    void Import(std::ifstream& ifs) {
+        ifs >> model >> cores >> frequency;
+    }
+};
+
+class RamSpec {
+public:
+    int size;  // Taille de la RAM en GB
+
+    // Méthode pour afficher les détails de la RAM
+    void Print() const {
+        std::cout << "RAM Size: " << size << " GB" << std::endl;
+    }
+
+    // Méthode pour exporter les informations vers un fichier
+    void Export(std::ofstream& ofs) const {
+        ofs << size << "\n";
+    }
+
+    // Méthode pour importer les informations depuis un fichier
+    void Import(std::ifstream& ifs) {
+        ifs >> size;
+    }
+};
+
+class LanSpec {
+public:
+    int bandwidth;  // Débit réseau en Mbps
+
+    // Méthode pour afficher les détails du LAN
+    void Print() const {
+        std::cout << "LAN Bandwidth: " << bandwidth << " Mbps" << std::endl;
+    }
+
+    // Méthode pour exporter les informations vers un fichier
+    void Export(std::ofstream& ofs) const {
+        ofs << bandwidth << "\n";
+    }
+
+    // Méthode pour importer les informations depuis un fichier
+    void Import(std::ifstream& ifs) {
+        ifs >> bandwidth;
+    }
+};
+
+class ClusterNode {
+public:
+    GpuSpec gpu;  // Caractéristiques du GPU
+    CpuSpec cpu;  // Caractéristiques du CPU
+    RamSpec ram;  // Caractéristiques de la RAM
+    LanSpec lan;  // Caractéristiques du LAN
+
+    // Affiche les informations de tous les composants du nœud
+    void Print() const {
+        std::cout << "Cluster Node:" << std::endl;
+        gpu.Print();
+        cpu.Print();
+        ram.Print();
+        lan.Print();
+    }
+
+    // Exporte les informations du nœud vers un fichier
+    void Export(std::ofstream& ofs) const {
+        gpu.Export(ofs);
+        cpu.Export(ofs);
+        ram.Export(ofs);
+        lan.Export(ofs);
+    }
+
+    // Importe les informations du nœud depuis un fichier
+    void Import(std::ifstream& ifs) {
+        gpu.Import(ifs);
+        cpu.Import(ifs);
+        ram.Import(ifs);
+        lan.Import(ifs);
+    }
+};
+
+class Cluster {
+public:
+    std::vector<ClusterNode> nodes;  // Liste des nœuds dans le cluster
+
+    // Ajoute un nœud au cluster
+    void AddNode(const ClusterNode& node) {
+        nodes.push_back(node);
+    }
+
+    // Affiche les informations de tous les nœuds du cluster
+    void Print() const {
+        for (size_t i = 0; i < nodes.size(); ++i) {
+            std::cout << "Node " << i + 1 << ":" << std::endl;
+            nodes[i].Print();
+            std::cout << "------------------------" << std::endl;
+        }
+    }
+
+    // Exporte les informations du cluster vers un fichier
+    void Export(const std::string& filename) const {
+        std::ofstream ofs(filename);
+        if (ofs.is_open()) {
+            ofs << nodes.size() << "\n";  // Sauvegarde le nombre de nœuds
+            for (const auto& node : nodes) {
+                node.Export(ofs);  // Sauvegarde chaque nœud
+            }
+            ofs.close();
+        }
+    }
+
+    // Importe les informations du cluster depuis un fichier
+    void Import(const std::string& filename) {
+        std::ifstream ifs(filename);
+        if (ifs.is_open()) {
+            size_t node_count;
+            ifs >> node_count;  // Charge le nombre de nœuds
+            nodes.resize(node_count);
+            for (size_t i = 0; i < node_count; ++i) {
+                nodes[i].Import(ifs);  // Charge chaque nœud
+            }
+            ifs.close();
+        }
+    }
+};
+
+int main() {
+    // Création d'un nœud
+    ClusterNode node;
+    node.gpu = {"NVIDIA RTX 3090", 24576};
+    node.cpu = {"Intel i9-11900K", 8, 3.5};
+    node.ram = {32};
+    node.lan = {1000};
+
+    // Création du cluster et ajout du nœud
+    Cluster cluster;
+    cluster.AddNode(node);
+
+    // Affiche les informations du cluster
+    cluster.Print();
+
+    // Sauvegarde les informations dans un fichier
+    cluster.Export("cluster_data.txt");
+
+    // Charge les informations depuis le fichier
+    Cluster new_cluster;
+    new_cluster.Import("cluster_data.txt");
+
+    // Affiche les informations après importation
+    new_cluster.Print();  // Correction ici
+}
