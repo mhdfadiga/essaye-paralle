@@ -1,0 +1,175 @@
+#include <iostream>
+#include <vector>
+#include <stdexcept>
+#include <fstream>
+#include <string>
+#include <memory>
+
+// Базовый класс для матриц
+template <typename T = double>
+class MatrixBase {
+public:
+    virtual ~MatrixBase() = default;
+
+    virtual unsigned rows() const = 0;
+    virtual unsigned cols() const = 0;
+
+    virtual T get(unsigned i, unsigned j) const = 0;
+    virtual void set(unsigned i, unsigned j, T value) = 0;
+
+    virtual std::unique_ptr<MatrixBase<T>> add(const MatrixBase<T>& other) const = 0;
+    virtual std::unique_ptr<MatrixBase<T>> multiply(const MatrixBase<T>& other) const = 0;
+
+    virtual void print() const = 0;
+};
+
+// Класс плотной матрицы
+template <typename T = double>
+class MatrixDense : public MatrixBase<T> {
+private:
+    unsigned _m, _n;
+    std::vector<T> _data;
+
+public:
+    MatrixDense(unsigned rows, unsigned cols, T initialValue = T())
+        : _m(rows), _n(cols), _data(rows * cols, initialValue) {}
+
+    unsigned rows() const override { return _m; }
+    unsigned cols() const override { return _n; }
+
+    T get(unsigned i, unsigned j) const override {
+        if (i >= _m || j >= _n)
+            throw std::out_of_range("Index out of range");
+        return _data[i * _n + j];
+    }
+
+    void set(unsigned i, unsigned j, T value) override {
+        if (i >= _m || j >= _n)
+            throw std::out_of_range("Index out of range");
+        _data[i * _n + j] = value;
+    }
+
+    std::unique_ptr<MatrixBase<T>> add(const MatrixBase<T>& other) const override {
+        if (other.rows() != _m || other.cols() != _n)
+            throw std::invalid_argument("Matrix dimensions must match for addition");
+
+        auto result = std::make_unique<MatrixDense<T>>(_m, _n);
+        for (unsigned i = 0; i < _m; ++i) {
+            for (unsigned j = 0; j < _n; ++j) {
+                result->set(i, j, this->get(i, j) + other.get(i, j));
+            }
+        }
+        return result;
+    }
+
+    std::unique_ptr<MatrixBase<T>> multiply(const MatrixBase<T>& other) const override {
+        if (this->cols() != other.rows())
+            throw std::invalid_argument("Matrix dimensions must match for multiplication");
+
+        auto result = std::make_unique<MatrixDense<T>>(this->rows(), other.cols());
+        for (unsigned i = 0; i < this->rows(); ++i) {
+            for (unsigned j = 0; j < other.cols(); ++j) {
+                T sum = 0;
+                for (unsigned k = 0; k < this->cols(); ++k) {
+                    sum += this->get(i, k) * other.get(k, j);
+                }
+                result->set(i, j, sum);
+            }
+        }
+        return result;
+    }
+
+    void print() const override {
+        for (unsigned i = 0; i < _m; ++i) {
+            for (unsigned j = 0; j < _n; ++j) {
+                std::cout << get(i, j) << " ";
+            }
+            std::cout << "\n";
+        }
+    }
+};
+
+// Класс диагональной матрицы
+template <typename T = double>
+class MatrixDiagonal : public MatrixBase<T> {
+private:
+    unsigned _m, _n;
+    std::vector<int> _diagIndices;
+    std::vector<std::vector<T>> _diagData;
+
+public:
+    MatrixDiagonal(unsigned rows, unsigned cols, const std::vector<int>& diagIndices)
+        : _m(rows), _n(cols), _diagIndices(diagIndices), _diagData(diagIndices.size(), std::vector<T>(rows, T())) {}
+
+    unsigned rows() const override { return _m; }
+    unsigned cols() const override { return _n; }
+
+    T get(unsigned i, unsigned j) const override {
+        for (size_t k = 0; k < _diagIndices.size(); ++k) {
+            if (j - i == _diagIndices[k]) {
+                return _diagData[k][i];
+            }
+        }
+        return T();
+    }
+
+    void set(unsigned i, unsigned j, T value) override {
+        for (size_t k = 0; k < _diagIndices.size(); ++k) {
+            if (j - i == _diagIndices[k]) {
+                _diagData[k][i] = value;
+                return;
+            }
+        }
+        if (value != T())
+            throw std::invalid_argument("Cannot set non-zero value outside of diagonal");
+    }
+
+    std::unique_ptr<MatrixBase<T>> add(const MatrixBase<T>& other) const override {
+        // Преобразование диагональной матрицы в плотную для сложения
+        auto dense = std::make_unique<MatrixDense<T>>(_m, _n);
+        for (unsigned i = 0; i < _m; ++i) {
+            for (unsigned j = 0; j < _n; ++j) {
+                dense->set(i, j, this->get(i, j) + other.get(i, j));
+            }
+        }
+        return dense;
+    }
+
+    std::unique_ptr<MatrixBase<T>> multiply(const MatrixBase<T>& other) const override {
+        // Аналогично операции сложения
+        return nullptr; // Для краткости
+    }
+
+    void print() const override {
+        for (unsigned i = 0; i < _m; ++i) {
+            for (unsigned j = 0; j < _n; ++j) {
+                std::cout << get(i, j) << " ";
+            }
+            std::cout << "\n";
+        }
+    }
+};
+
+// Тестирование
+int main() {
+    // Пример использования MatrixDense
+    MatrixDense<double> dense(3, 3);
+    dense.set(0, 0, 1.0);
+    dense.set(1, 1, 2.0);
+    dense.set(2, 2, 3.0);
+
+    std::cout << "MatrixDense:\n";
+    dense.print();
+
+    // Пример использования MatrixDiagonal
+    std::vector<int> diagIndices = {0};
+    MatrixDiagonal<double> diag(3, 3, diagIndices);
+    diag.set(0, 0, 1.0);
+    diag.set(1, 1, 2.0);
+    diag.set(2, 2, 3.0);
+
+    std::cout << "\nMatrixDiagonal:\n";
+    diag.print();
+
+    return 0;
+}
