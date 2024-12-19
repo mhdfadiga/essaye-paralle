@@ -1,0 +1,170 @@
+#include <iostream>
+#include <vector>
+#include <random>
+#include <chrono>
+#include <mutex>
+#include <thread>
+
+template <typename T>
+class Vector {
+private:
+    T* array;
+    int N;
+    bool initialized;
+    std::mutex mtx;
+
+public:
+    // Constructor
+    Vector(int size) : N(size), initialized(false) {
+        array = new T[N];
+    }
+
+    // Destructor
+    ~Vector() {
+        delete[] array;
+    }
+
+    void initializeConstant(T value) {
+        for (int i = 0; i < N; i++) {
+            array[i] = value;
+        }
+        initialized = true;
+    }
+
+    void initializeRandom(T min, T max) {
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<T> dist(min, max);
+        for (int i = 0; i < N; i++) {
+            array[i] = dist(gen);
+        }
+        initialized = true;
+    }
+
+    void exportVector(std::vector<T>& result) {
+        for (int i = 0; i < N; i++) {
+            result.push_back(array[i]);
+        }
+    }
+
+    void importVector(const std::vector<T>& values) {
+        for (int i = 0; i < N; i++) {
+            array[i] = values[i];
+        }
+        initialized = true;
+    }
+
+    T findMin() {
+        T minElement = array[0];
+        for (int i = 1; i < N; i++) {
+            if (array[i] < minElement) {
+                minElement = array[i];
+            }
+        }
+        return minElement;
+    }
+
+    T findMax() {
+        T maxElement = array[0];
+        for (int i = 1; i < N; i++) {
+            if (array[i] > maxElement) {
+                maxElement = array[i];
+            }
+        }
+        return maxElement;
+    }
+
+    double findAverage() {
+        T sum = 0;
+        for (int i = 0; i < N; i++) {
+            sum += array[i];
+        }
+        return static_cast<double>(sum) / N;
+    }
+
+    int findMinIndex() {
+        T minElement = array[0];
+        int index = 0;
+        for (int i = 1; i < N; i++) {
+            if (array[i] < minElement) {
+                minElement = array[i];
+                index = i;
+            }
+        }
+        return index;
+    }
+
+    int findMaxIndex() {
+        T maxElement = array[0];
+        int index = 0;
+        for (int i = 1; i < N; i++) {
+            if (array[i] > maxElement) {
+                maxElement = array[i];
+                index = i;
+            }
+        }
+        return index;
+    }
+
+    T sumElements() {
+        T sum = 0;
+        for (int i = 0; i < N; i++) {
+            sum += array[i];
+        }
+        return sum;
+    }
+
+    // Euclidean norm
+    double euclideanNorm() {
+        T sum = 0;
+        for (int i = 0; i < N; i++) {
+            sum += array[i] * array[i];
+        }
+        return std::sqrt(sum);
+    }
+
+    // Manhattan norm
+    double manhattanNorm() {
+        T sum = 0;
+        for (int i = 0; i < N; i++) {
+            sum += std::abs(array[i]);
+        }
+        return sum;
+    }
+
+    // Scalar product of two vectors
+    T scalarProduct(Vector<T>& other) {
+        T result = 0;
+        for (int i = 0; i < N; i++) {
+            result += array[i] * other.array[i];
+        }
+        return result;
+    }
+
+    void parallelSum(int threadCount, T& result) {
+        std::vector<std::thread> threads;
+        std::vector<T> localSums(threadCount, 0);
+
+        int chunkSize = N / threadCount;
+        for (int i = 0; i < threadCount; i++) {
+            threads.emplace_back([this, i, chunkSize, &localSums]() {
+                int start = i * chunkSize;
+                int end = (i == threadCount - 1) ? N : start + chunkSize;
+                T localSum = 0;
+                for (int j = start; j < end; j++) {
+                    localSum += array[j];
+                }
+
+                std::lock_guard<std::mutex> lock(mtx);
+                result += localSum;
+            });
+        }
+
+        for (std::thread& t : threads) {
+            t.join();
+        }
+    }
+};
+
+int main() {
+    const int size = 1
