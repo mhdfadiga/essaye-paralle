@@ -1,0 +1,135 @@
+#include <iostream>
+#include <fstream>
+#include <memory>
+#include <vector>
+#include <thread>
+#include <mutex>
+#include <random>
+#include <algorithm>
+#include <numeric>
+#include <chrono>
+#include <stdexcept>
+#include <cmath>
+
+template <typename T>
+class Vector {
+private:
+    size_t N;
+    std::unique_ptr<T[]> data;
+    bool is_initialized;
+    std::mutex mtx;
+
+public:
+    // Конструктор
+    Vector(size_t size) : N(size), data(std::make_unique<T[]>(size)), is_initialized(false) {}
+
+    // Деструктор
+    ~Vector() = default;
+
+    // Проверка инициализации
+    void check_initialization() const {
+        if (!is_initialized) {
+            throw std::runtime_error("Вектор не инициализирован");
+        }
+    }
+
+    // Инициализация константой
+    void initialize_constant(const T& value) {
+        std::fill(data.get(), data.get() + N, value);
+        is_initialized = true;
+    }
+
+    // Инициализация случайными числами в диапазоне [min, max]
+    void initialize_random(const T& min, const T& max) {
+        if (min > max) {
+            throw std::invalid_argument("Минимальное значение больше максимального");
+        }
+        std::random_device rd;
+        std::mt19937 gen(rd());
+
+        if constexpr (std::is_integral<T>::value) {
+            std::uniform_int_distribution<T> dist(min, max);
+            for (size_t i = 0; i < N; ++i) {
+                data[i] = dist(gen);
+            }
+        } else if constexpr (std::is_floating_point<T>::value) {
+            std::uniform_real_distribution<T> dist(min, max);
+            for (size_t i = 0; i < N; ++i) {
+                data[i] = dist(gen);
+            }
+        } else {
+            throw std::runtime_error("Тип данных не поддерживается для генерации случайных чисел");
+        }
+        is_initialized = true;
+    }
+
+    // Экспорт в файл
+    void export_to_file(const std::string& filename) const {
+        check_initialization();
+        std::ofstream ofs(filename, std::ios::binary);
+        if (!ofs) {
+            throw std::runtime_error("Не удалось открыть файл для записи");
+        }
+        ofs.write(reinterpret_cast<const char*>(data.get()), N * sizeof(T));
+    }
+
+    // Импорт из файла
+    void import_from_file(const std::string& filename) {
+        std::ifstream ifs(filename, std::ios::binary);
+        if (!ifs) {
+            throw std::runtime_error("Не удалось открыть файл для чтения");
+        }
+        ifs.read(reinterpret_cast<char*>(data.get()), N * sizeof(T));
+        is_initialized = true;
+    }
+
+    // Поиск минимума и его индекса
+    std::pair<T, size_t> find_min() const {
+        check_initialization();
+        auto min_iter = std::min_element(data.get(), data.get() + N);
+        return {*min_iter, std::distance(data.get(), min_iter)};
+    }
+
+    // Поиск максимума и его индекса
+    std::pair<T, size_t> find_max() const {
+        check_initialization();
+        auto max_iter = std::max_element(data.get(), data.get() + N);
+        return {*max_iter, std::distance(data.get(), max_iter)};
+    }
+
+    // Вычисление среднего значения
+    T calculate_average() const {
+        check_initialization();
+        T sum = std::accumulate(data.get(), data.get() + N, T(0));
+        return sum / static_cast<T>(N);
+    }
+
+    // Вычисление суммы элементов
+    T calculate_sum() const {
+        check_initialization();
+        return std::accumulate(data.get(), data.get() + N, T(0));
+    }
+
+    // Евклидова норма
+    double calculate_euclidean_norm() const {
+        check_initialization();
+        double sum_of_squares = std::accumulate(data.get(), data.get() + N, 0.0, [](double acc, const T& val) {
+            return acc + static_cast<double>(val) * static_cast<double>(val);
+        });
+        return std::sqrt(sum_of_squares);
+    }
+
+    // Манхэттенская норма
+    T calculate_manhattan_norm() const {
+        check_initialization();
+        return std::accumulate(data.get(), data.get() + N, T(0), [](T acc, const T& val) {
+            return acc + std::abs(val);
+        });
+    }
+
+    // Скалярное произведение с другим вектором
+    T dot_product(const Vector<T>& other) const {
+        check_initialization();
+       
+::contentReference[oaicite:0]{index=0}
+ 
